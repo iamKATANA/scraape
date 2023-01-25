@@ -1,0 +1,52 @@
+from mrjob.job import MRJob
+
+
+class DataCleaning(MRJob):
+
+    def mapper(self, _, line):
+        # Split the line by comma
+        parts = line.split(',')
+        # Assign the date and price variables
+        date = parts[0]
+        open_price = parts[1]
+        high_price = parts[2]
+        low_price = parts[3]
+        close_price = parts[4]
+        # Check if the date and price variables are not empty
+        if date and open_price and high_price and low_price and close_price:
+            # Check if the date is in the correct format
+            if len(date) == 10 and date[4] == '-' and date[7] == '-':
+                # Check if the price variables are in the correct format
+                if open_price[0] == '$' and high_price[0] == '$' and low_price[0] == '$' and close_price[0] == '$':
+                    # Remove the '$' from the price variables
+                    open_price = open_price[1:]
+                    high_price = high_price[1:]
+                    low_price = low_price[1:]
+                    close_price = close_price[1:]
+                    # Check if the price variables contain only numbers
+                    if open_price.isnumeric() and high_price.isnumeric() and low_price.isnumeric() and close_price.isnumeric():
+                        yield (date, open_price, high_price, low_price, close_price)
+
+    def reducer(self, date, prices):
+        # Calculate the average prices
+        open_price_sum = 0
+        high_price_sum = 0
+        low_price_sum = 0
+        close_price_sum = 0
+        count = 0
+        for price in prices:
+            open_price_sum += float(price[0])
+            high_price_sum += float(price[1])
+            low_price_sum += float(price[2])
+            close_price_sum += float(price[3])
+            count += 1
+        open_price_avg = open_price_sum / count
+        high_price_avg = high_price_sum / count
+        low_price_avg = low_price_sum / count
+        close_price_avg = close_price_sum / count
+        # Output the results
+        yield (date, open_price_avg, high_price_avg, low_price_avg, close_price_avg)
+
+
+if __name__ == '__main__':
+    DataCleaning.run()
