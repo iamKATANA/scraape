@@ -1,0 +1,36 @@
+from mrjob.job import MRJob
+from mrjob.step import MRStep
+import csv
+
+class PreprocessData(MRJob):
+
+    def mapper_init(self):
+        self.response_header = None
+        self.api_header = None
+
+    def mapper(self, _, line):
+        line = line.strip()
+        if line.startswith("Data for "):
+            yield line, None
+        elif not self.response_header:
+            self.response_header = line.split(",")
+        elif not self.api_header:
+            self.api_header = line.split(",")
+        else:
+            response_data = dict(zip(self.response_header, line.split(",")))
+            api_data = dict(zip(self.api_header, line.split(",")))
+
+            # Check for missing data
+            if any([value == "" for value in response_data.values()]):
+                return
+            if any([value == "" for value in api_data.values()]):
+                return
+            yield response_data["user_id"], float(response_data["response_time"])
+
+            def reducer(self, key, values):
+                yield key, sum(values) / len(values)
+
+            def steps(self):
+                return [
+                    MRStep(mapper_init=self.mapper_init, mapper=self.mapper, reducer=self.reducer)
+                ]
